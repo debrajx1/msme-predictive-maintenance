@@ -1,160 +1,90 @@
-import { useState, useEffect, useRef } from "react"; 
-import { motion } from "framer-motion";
-import toast from "react-hot-toast";
-import Chart from "../components/Chart.jsx";
-import LoadingSpinner from "../components/LoadingSpinner.jsx";
-import { useAppContext } from "../context/AppContext.jsx";
-import { getPredictions } from "../services/api.js";
+import { useState, useEffect } from "react";
 
 export default function Simulation({ activeMachine, onSimulate }) {
-  const { machines, csvUploaded } = useAppContext();
-  const [simulationData, setSimulationData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedMachine, setSelectedMachine] = useState(activeMachine || machines?.[0]?.id || "");
-  const toastShownRef = useRef(false);
+  const [temp, setTemp] = useState(72);
+  const [vib, setVib] = useState(0.03);
+  const [preset, setPreset] = useState("Normal");
 
-  // Helper: map CSV row data to simulation format
-  const mapCsvToSimulation = (rows, machineId) => {
-    return rows
-      .filter(row => row.Machine_ID === machineId)
-      .map((row, i) => ({
-        time: `T-${i}`,
-        temp: parseFloat(row.Temperature),
-        vib: parseFloat(row.Vibration),
-        risk: 0.3, // placeholder risk
-        confidence: 0.8,
-        impact: 5000,
-        suggestion: "Monitor machine regularly."
-      }));
+  // Preset options
+  const presets = {
+    Normal: { temp: 72, vib: 0.03 },
+    Hot: { temp: 90, vib: 0.04 },
+    Vibrating: { temp: 70, vib: 0.08 },
+    Critical: { temp: 95, vib: 0.1 },
   };
 
-  // Sync selectedMachine when Dashboard changes activeMachine
   useEffect(() => {
-    if (activeMachine && activeMachine !== selectedMachine) {
-      setSelectedMachine(activeMachine);
-      toastShownRef.current = false; // reset toast for new machine
+    if (preset in presets) {
+      setTemp(presets[preset].temp);
+      setVib(presets[preset].vib);
     }
-  }, [activeMachine]);
+  }, [preset]);
 
-  // Fetch or load simulation data whenever selectedMachine changes
-  useEffect(() => {
-    if (!selectedMachine) return;
-    setLoading(true);
+  const handleSimulate = () => {
+    const risk = Math.min(1, (temp - 60) / 50 + (vib - 0.03) * 5); // simplified risk
+    const confidence = Math.min(1, risk + 0.1);
+    const impact = Math.round(risk * 10000);
+    const suggestion = risk > 0.7 ? "Inspect immediately" : risk > 0.4 ? "Check regularly" : "Monitor";
 
-    const loadSimulation = async () => {
-      try {
-        let initialData = [];
-
-        if (csvUploaded?.length) {
-          // Use CSV data if uploaded
-          initialData = mapCsvToSimulation(csvUploaded, selectedMachine);
-        }
-
-        if (!initialData.length) {
-          // fallback to API predictions
-          const { data } = await getPredictions();
-          const machineData = (data || []).filter(d => d.machineId === selectedMachine);
-
-          initialData = machineData.map((d, i) => ({
-            time: `T-${i}`,
-            temp: d.temperature ?? 72 + Math.random() * 2,
-            vib: d.vibration ?? 0.03 + Math.random() * 0.01,
-            risk: d.risk ?? 0,
-            confidence: d.confidence ?? 0,
-            impact: d.impact ?? 0,
-            suggestion: d.suggestion ?? "Monitor machine regularly."
-          }));
-        }
-
-        setSimulationData(initialData);
-
-        if (onSimulate && initialData.length > 0) {
-          onSimulate({ machineId: selectedMachine, ...initialData.at(-1) });
-        }
-
-        if (!toastShownRef.current) {
-          toast.success(initialData.length && csvUploaded?.length ? "Simulation loaded from CSV" : "Simulation loaded from pre-trained model");
-          toastShownRef.current = true;
-        }
-      } catch {
-        toast.error("Failed to load simulation data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSimulation();
-  }, [selectedMachine, csvUploaded, onSimulate]);
-
-  // Simulate next data point
-  const simulateNextPoint = () => {
-    setSimulationData(prev => {
-      const last = prev.at(-1) || { temp: 72, vib: 0.03, risk: 0.3, confidence: 0.7, impact: 5000 };
-      const newPoint = {
-        time: `T+${prev.length}`,
-        temp: last.temp + (Math.random() - 0.5) * 2,
-        vib: last.vib + (Math.random() - 0.5) * 0.01,
-        risk: Math.min(Math.max(last.risk + (Math.random() - 0.5) * 0.1, 0), 1),
-        confidence: Math.min(Math.max(last.confidence + (Math.random() - 0.5) * 0.05, 0), 1),
-        impact: Math.max(last.impact + (Math.random() - 0.5) * 500, 0),
-        suggestion: "Monitor machine regularly."
-      };
-
-      if (onSimulate) onSimulate({ machineId: selectedMachine, ...newPoint });
-
-      return [...prev.slice(-59), newPoint];
-    });
+    onSimulate({ machineId: activeMachine, temp, vib, risk, confidence, impact, suggestion });
   };
 
   return (
-    <motion.div
-      className="mx-auto max-w-5xl space-y-6 px-4 py-6"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <h2 className="text-3xl font-bold text-white">Machine Simulation</h2>
-      <p className="text-slate-400">
-        Simulate machine metrics over time using <strong>CSV data or pre-trained AI predictions</strong>.
-      </p>
+    <div className="card p-4 bg-slate-800/50 rounded-xl shadow-md space-y-4">
+      <h3 className="text-white font-semibold">Simulation Controls — {activeMachine}</h3>
 
-      {/* Machine Selector */}
-      <div className="flex items-center gap-4">
-        <label className="text-slate-300 font-medium">Select Machine:</label>
-        <select
-          className="input bg-slate-800 text-white border-slate-700 focus:border-blue-500"
-          value={selectedMachine}
-          onChange={e => { setSelectedMachine(e.target.value); toastShownRef.current = false; }}
-        >
-          {machines?.map(m => <option key={m.id} value={m.id}>{m.id}</option>)}
-        </select>
-        <button
-          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={simulateNextPoint}
-        >
-          Simulate Next Point
-        </button>
+      {/* Presets */}
+      <div className="flex gap-2">
+        {Object.keys(presets).map((p) => (
+          <button
+            key={p}
+            className={`px-3 py-1 rounded ${preset === p ? "bg-blue-500 text-white" : "bg-slate-700 text-slate-300"}`}
+            onClick={() => setPreset(p)}
+          >
+            {p}
+          </button>
+        ))}
       </div>
 
-      {/* Chart */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner className="w-10 h-10" />
-          <span className="text-slate-400 ml-3">Loading simulation...</span>
+      {/* Sliders */}
+      <div className="space-y-2">
+        <div>
+          <label className="text-slate-300">Temperature (°C): {temp.toFixed(1)}</label>
+          <input
+            type="range"
+            min="60"
+            max="120"
+            step="0.1"
+            value={temp}
+            onChange={(e) => setTemp(Number(e.target.value))}
+            className="w-full"
+          />
         </div>
-      ) : (
-        <Chart
-          title={`Simulation for ${selectedMachine}`}
-          data={simulationData}
-          yLabel="Value"
-        />
-      )}
-
-      <div className="mt-4 text-sm text-slate-400 bg-[#1a1c24] p-4 rounded-xl shadow-md">
-        <p>
-          Note: The simulation shows predicted temperature, vibration, and risk trends from CSV or pre-trained AI model.
-        </p>
+        <div>
+          <label className="text-slate-300">Vibration (g RMS): {vib.toFixed(3)}</label>
+          <input
+            type="range"
+            min="0"
+            max="0.15"
+            step="0.001"
+            value={vib}
+            onChange={(e) => setVib(Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
       </div>
-    </motion.div>
+
+      <button
+        onClick={handleSimulate}
+        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition"
+      >
+        Run Simulation
+      </button>
+
+      {/* Live Preview */}
+      <div className="text-slate-300 text-sm">
+        <p>Preview Risk: <span className="font-medium">{((temp - 60) / 50 + (vib - 0.03) * 5).toFixed(2)}</span></p>
+      </div>
+    </div>
   );
 }
