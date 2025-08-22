@@ -1,16 +1,16 @@
 import { createContext, useContext, useState } from "react";
-import Papa from "papaparse"; // CSV parser
+import Papa from "papaparse";
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [csvUploaded, setCsvUploaded] = useState([]); // stores parsed CSV rows as JSON
-  const [predictions, setPredictions] = useState([]); // stores API prediction results
-  const [machines, setMachines] = useState([]); // list of available machines
+  const [csvUploaded, setCsvUploaded] = useState([]); // parsed CSV rows
+  const [predictions, setPredictions] = useState([]);
+  const [machines, setMachines] = useState([]);
 
   /**
-   * Handles CSV upload and parsing
-   * @param {File} file - CSV file uploaded by user
+   * Handles CSV upload
+   * Accepts variations in headers like: Machine ID, Machine_ID, machineId
    */
   const handleCsvUpload = (file) => {
     if (!file) return;
@@ -19,25 +19,30 @@ export const AppProvider = ({ children }) => {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        // Convert numeric fields
-        const parsedData = results.data.map(row => ({
-          Machine_ID: row.Machine_ID,
-          Temperature: parseFloat(row.Temperature),
-          Vibration: parseFloat(row.Vibration),
-          Usage_Hours: parseFloat(row.Usage_Hours)
-        }));
+        // Normalize headers: trim + lowercase
+        const parsedData = results.data.map((row) => {
+          const normalizedRow = {};
+          Object.keys(row).forEach((key) => {
+            const val = row[key];
+            const normalizedKey = key.trim().toLowerCase();
+            if (normalizedKey.includes("machine")) normalizedRow.Machine_ID = val?.trim();
+            else if (normalizedKey.includes("temp")) normalizedRow.Temperature = parseFloat(val);
+            else if (normalizedKey.includes("vib")) normalizedRow.Vibration = parseFloat(val);
+            else if (normalizedKey.includes("usage")) normalizedRow.Usage_Hours = parseFloat(val);
+          });
+          return normalizedRow;
+        }).filter(r => r.Machine_ID); // filter rows without Machine_ID
 
         setCsvUploaded(parsedData);
 
-        // Update machines list dynamically
-        const machineList = [...new Set(parsedData.map(row => row.Machine_ID))].map(id => ({ id }));
+        // Extract unique machines
+        const machineList = [...new Set(parsedData.map(r => r.Machine_ID))].map(id => ({ id }));
         setMachines(machineList);
 
-        console.log("CSV parsed successfully:", parsedData);
+        console.log("CSV parsed:", parsedData);
+        console.log("Machines:", machineList);
       },
-      error: (err) => {
-        console.error("Failed to parse CSV:", err);
-      }
+      error: (err) => console.error("CSV parse error:", err)
     });
   };
 
@@ -58,5 +63,5 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-// Custom hook for easy consumption
+// Hook
 export const useAppContext = () => useContext(AppContext);
