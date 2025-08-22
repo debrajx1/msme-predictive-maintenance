@@ -1,0 +1,7 @@
+features:
+  - vib_rms
+  - vib_kurtosis
+  - temp_c
+  - current_a
+  - rpm
+label_name: label

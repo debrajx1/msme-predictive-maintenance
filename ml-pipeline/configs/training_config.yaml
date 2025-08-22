@@ -1,0 +1,5 @@
+random_state: 42
+n_samples: 5000     # synthetic demo
+window_size: 256
+test_size: 0.2
+target_recall: 0.85
