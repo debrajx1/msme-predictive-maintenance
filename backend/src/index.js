@@ -6,6 +6,7 @@ import path from "path";
 import dataRoutes from "./routes/data.routes.js";
 import predictionRoutes from "./routes/prediction.routes.js";
 import simulationRoutes from "./routes/simulation.routes.js";
+import userRoutes from "./routes/user.routes.js"; // <- added
 
 dotenv.config();
 
@@ -14,9 +15,11 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(path.resolve(), "uploads")));
 
+// Routes
 app.use("/api/data", dataRoutes);
 app.use("/api", predictionRoutes);
 app.use("/api/simulation", simulationRoutes);
+app.use("/api/users", userRoutes); // <- added
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

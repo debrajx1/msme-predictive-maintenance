@@ -22,7 +22,6 @@ const riskStatus = (value) =>
 
 export default function Dashboard() {
   const { csvUploaded, predictions = [], setPredictions } = useAppContext();
-
   const [loading, setLoading] = useState(false);
   const [machines, setMachines] = useState([]);
   const [active, setActive] = useState("");
@@ -30,7 +29,6 @@ export default function Dashboard() {
   const [simulationData, setSimulationData] = useState([]);
   const simulationRef = useRef([]);
 
-  // Fetch predictions
   useEffect(() => {
     if (!csvUploaded) return;
 
@@ -47,7 +45,6 @@ export default function Dashboard() {
         setMachines(machineList);
         if (!active && machineList.length > 0) setActive(machineList[0].id);
       } catch {
-        // fallback demo
         const demo = [
           { machineId: "machineA", risk: 0.3, confidence: 0.85, impact: 5000, suggestion: "Monitor regularly." },
           { machineId: "machineB", risk: 0.8, confidence: 0.95, impact: 12000, suggestion: "Inspect immediately." },
@@ -63,7 +60,6 @@ export default function Dashboard() {
     fetchPredictions();
   }, [csvUploaded, setPredictions]);
 
-  // Fetch live metrics
   useEffect(() => {
     if (!active) return;
     let mounted = true;
@@ -79,7 +75,6 @@ export default function Dashboard() {
         }));
         if (mounted) setSeries(rows.length ? rows : [{ time: "T-0", temp: 72, vib: 0.03 }]);
       } catch {
-        // fallback simulation
         const demo = Array.from({ length: 60 }, (_, i) => ({
           time: `${i}`.padStart(2, "0") + ":00",
           temp: 60 + Math.sin(i / 6) * 8 + (active === "machineB" ? 5 : 0),
@@ -119,7 +114,6 @@ export default function Dashboard() {
     };
   }, [series, predictions, active]);
 
-  // Handle simulation updates
   const handleSimulationUpdate = ({ machineId, temp, vib, risk, confidence, impact, suggestion }) => {
     setSimulationData((prev) => {
       const next = [...prev.slice(-59), { time: toTime(Date.now()), temp, vib }];
@@ -140,23 +134,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 space-y-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 space-y-8 text-base-content">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-          <p className="text-slate-400">Real-time machine health & predictive maintenance overview</p>
+          <h2 className="text-3xl font-bold">Dashboard</h2>
+          <p className="text-base-content/70">Real-time machine health & predictive maintenance overview</p>
         </div>
         <div className="flex gap-4">
-          <Link to="/upload" className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">Upload Data</Link>
-          <Link to="/predictions" className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Predictions</Link>
+          <Link to="/upload" className="btn btn-primary btn-sm">Upload Data</Link>
+          <Link to="/predictions" className="btn btn-secondary btn-sm">Predictions</Link>
         </div>
       </div>
 
       {/* Machine Cards */}
       <div className="grid md:grid-cols-3 gap-4">
         {machines.length === 0
-          ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 bg-gray-800/50 rounded-lg animate-pulse" />)
+          ? Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-32 bg-base-200 rounded-lg animate-pulse" />
+            ))
           : machines.map((m) => (
               <MachineCard
                 key={m.id}
@@ -180,10 +176,16 @@ export default function Dashboard() {
 
       {/* Alerts */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-white">All Machine Alerts</h3>
+        <h3 className="text-lg font-semibold">All Machine Alerts</h3>
         <div className="grid md:grid-cols-3 gap-4">
           {(predictions || []).slice().sort((a, b) => (b.risk ?? 0) - (a.risk ?? 0)).map((p) => (
-            <AlertCard key={p.machineId} machine={p.machineId} risk={riskLabel(p.risk ?? 0)} message={p.suggestion ?? "Monitor machine regularly."} topFeatures={p.featureImportance ?? []} />
+            <AlertCard
+              key={p.machineId}
+              machine={p.machineId}
+              risk={riskLabel(p.risk ?? 0)}
+              message={p.suggestion ?? "Monitor machine regularly."}
+              topFeatures={p.featureImportance ?? []}
+            />
           ))}
         </div>
       </div>
@@ -191,11 +193,16 @@ export default function Dashboard() {
       {/* Feature Importance & Impact */}
       <div className="grid md:grid-cols-2 gap-6">
         <FeatureImportance data={activeInfo.featureImportance} />
-        <ImpactChart data={(predictions || []).map((p) => ({ machine: p.machineId, impact: p.impact ?? 0, risk: riskLabel(p.risk ?? 0), topFeature: p.featureImportance?.[0]?.feature }))} />
+        <ImpactChart data={(predictions || []).map((p) => ({
+          machine: p.machineId,
+          impact: p.impact ?? 0,
+          risk: riskLabel(p.risk ?? 0),
+          topFeature: p.featureImportance?.[0]?.feature
+        }))} />
       </div>
 
       {loading && (
-        <div className="mt-4 text-sm text-slate-400 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-2 text-base-content/70">
           <LoadingSpinner /> Updating metrics…
         </div>
       )}

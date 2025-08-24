@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { ping } from "../controllers/user.controller.js";
+import express from "express";
+import { loginUser, registerUser } from "../controllers/user.controller.js";
 
-const router = Router();
+const router = express.Router();
 
-// MVP placeholder
-router.get("/ping", ping);
+router.post("/login", loginUser);
+router.post("/register", registerUser);
 
 export default router;

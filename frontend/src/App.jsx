@@ -1,5 +1,4 @@
-// App.jsx
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Home from "./pages/Home.jsx";
@@ -12,7 +11,22 @@ import Simulation from "./pages/Simulation.jsx";
 import Reports from "./pages/Reports.jsx";
 import SettingsPage from "./pages/Settings.jsx";
 
-// AppShell layout with Navbar + Sidebar
+// New pages
+import Landing from "./pages/Landing.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+
+import { useContext } from "react";
+import { AuthContext } from "./context/AuthContext.jsx";
+
+// Protected route wrapper
+const ProtectedRoute = ({ children }) => {
+  const { user } = useContext(AuthContext);
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+// AppShell layout with Navbar + Sidebar for authenticated users
 function AppShell() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -20,18 +34,22 @@ function AppShell() {
       <div className="flex flex-1">
         <Sidebar />
         <main className="flex-1 p-6 md:p-8 bg-[#0b0d12]">
-          <Outlet /> {/* Render the active route here */}
+          <Outlet /> {/* Render active route */}
         </main>
       </div>
     </div>
   );
 }
 
-// Public layout for Home/About/Contact
+// Public layout with conditional Navbar
 function PublicShell() {
+  const location = useLocation();
+  const hideNavbarPaths = ["/", "/login"]; // Hide Navbar on Landing & Login pages
+  const showNavbar = !hideNavbarPaths.includes(location.pathname);
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {showNavbar && <Navbar />}
       <main className="flex-1 p-6 md:p-12 bg-[#0b0d12]">
         <Outlet />
       </main>
@@ -44,13 +62,22 @@ export default function App() {
     <Routes>
       {/* Public pages */}
       <Route element={<PublicShell />}>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Landing />} /> {/* No Navbar */}
+        <Route path="/login" element={<Login />} /> {/* No Navbar */}
+        <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
       </Route>
 
-      {/* App pages with Sidebar */}
-      <Route element={<AppShell />}>
+      {/* Protected App pages */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/home" element={<Home />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/predictions" element={<Predictions />} />
         <Route path="/upload" element={<UploadData />} />

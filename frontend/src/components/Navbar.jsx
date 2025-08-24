@@ -1,20 +1,28 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import logo from "../assets/images/logo.png";
+import { AuthContext } from "../context/AuthContext.jsx";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useContext(AuthContext); // get logged-in user
 
-  const navLinks = [
+  // Separate links for public and authenticated users
+  const publicLinks = [
     { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Contact", path: "/contact" },
+  ];
+
+  const authLinks = [
     { name: "Dashboard", path: "/dashboard" },
     { name: "Predictions", path: "/predictions" },
     { name: "Upload Data", path: "/upload" },
     { name: "Simulation", path: "/simulation" },
-    { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
+    { name: "Reports", path: "/reports" },
+    { name: "Settings", path: "/settings" },
   ];
 
   const linkClasses = ({ isActive }) =>
@@ -43,7 +51,7 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
+          {(user ? authLinks : publicLinks).map((link) => (
             <NavLink key={link.path} to={link.path} className={linkClasses}>
               {link.name}
             </NavLink>
@@ -69,7 +77,7 @@ export default function Navbar() {
             transition={{ duration: 0.25 }}
             className="md:hidden bg-gray-900/95 border-t border-white/10 px-4 py-6 flex flex-col gap-4"
           >
-            {navLinks.map((link) => (
+            {(user ? authLinks : publicLinks).map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}

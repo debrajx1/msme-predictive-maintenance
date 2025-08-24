@@ -4,8 +4,19 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/api";
 
 export const api = axios.create({
   baseURL: API_BASE,
-  timeout: 15000
+  timeout: 15000,
 });
+
+// User auth
+export const loginUser = async (username, password) => {
+  const { data } = await api.post("/users/login", { username, password });
+  return data;
+};
+
+export const registerUser = async (username, password) => {
+  const { data } = await api.post("/users/register", { username, password });
+  return data;
+};
 
 // Healthcheck
 export const getHealth = () => api.get("/health");
@@ -25,10 +36,10 @@ export const uploadCSV = (file) => {
   const formData = new FormData();
   formData.append("file", file);
   return api.post("/data/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" }
+    headers: { "Content-Type": "multipart/form-data" },
   });
 };
 
-// --- NEW: Simulation endpoint ---
+// Simulation endpoint
 export const runSimulation = ({ machineId, hours }) =>
   api.post("/simulation/run", { machineId, hours });
